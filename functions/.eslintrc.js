@@ -15,6 +15,14 @@ module.exports = {
     "/lib/**/*",
     ".eslintrc.js",
   ],
+  overrides: [
+    {
+      files: ["test/**/*.ts"],
+      env: {
+        jest: true,
+      },
+    },
+  ],
   plugins: [
     "@typescript-eslint",
   ],

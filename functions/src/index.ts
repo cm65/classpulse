@@ -1076,7 +1076,7 @@ export const sendPaymentReminders = functions
 
     let totalReminders = 0;
     let failedReminders = 0;
-    let lastInstituteDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined;
+    let lastInstituteDoc: admin.firestore.QueryDocumentSnapshot | undefined;
 
     // Paginate institutes in pages of 20
     let hasMore = true;
