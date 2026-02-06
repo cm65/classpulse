@@ -1,0 +1,389 @@
+# Ralph Progress Log
+Started: 2026-01-21
+
+## Codebase Patterns
+
+### Firestore Type Safety
+All Firestore data access uses explicit type casting:
+```dart
+(data['field'] as String?) ?? 'default'
+(data['field'] as int?) ?? 0
+(data['field'] as bool?) ?? false
+data['optionalField'] as String?
+(data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now()
+```
+
+### Model Structure
+- All models have `fromFirestore` factory and `toFirestore` method
+- `copyWith` method for immutable updates
+- Enums have `fromString` static method
+
+### State Management
+- Riverpod for all state
+- StreamProvider for real-time Firestore data
+- FutureProvider for one-time queries
+
+### Screen Patterns
+- ConsumerStatefulWidget for screens with local state
+- ConsumerWidget for simple screens
+- Ref for accessing providers
+
+---
+
+## Completed Stories
+
+### US-001: Phone OTP Login
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- lib/screens/auth/login_screen.dart
+- Firebase Phone Auth with auto-verification
+- Test phone: +91 9999999999 (OTP: 123456)
+
+### US-002: Institute Registration
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- lib/screens/auth/register_screen.dart
+- Creates institute and teacher records in Firestore
+
+### US-003: Create Batch/Class
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- lib/screens/batches/batch_list_screen.dart
+- lib/models/batch.dart with ScheduleTime
+
+### US-004: Add Student Manually
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- lib/screens/students/student_list_screen.dart
+- Student.isValidIndianPhone() for validation
+
+### US-005: Bulk Import Students via CSV
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- lib/screens/students/student_list_screen.dart (_ImportPreviewDialog)
+- Uses file_picker and csv packages
+
+### US-006: Edit/Remove Student
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- lib/screens/students/student_list_screen.dart
+- Soft delete via isActive flag
+
+### US-007: View Today's Attendance Screen
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- lib/screens/attendance/attendance_screen.dart
+- studentsProvider for batch students
+
+### US-008: Mark Individual Attendance
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- _toggleAttendance() with haptic feedback
+- AttendanceStatus.next() for cycling
+
+### US-009: Mark All Present / All Absent
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- _markAll() with confirmation dialog
+
+### US-010: Submit Attendance
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- _submitAttendance() method
+- Creates AttendanceRecord and StudentAttendance subcollection
+
+### US-016: View Daily Attendance Report
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- lib/screens/reports/reports_screen.dart (_DailyReportTab)
+- Dashboard summary cards
+
+### US-017: View Absent Students List
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- lib/screens/reports/reports_screen.dart (_AbsentListTab)
+- url_launcher for phone dialing
+
+### US-011: Offline Attendance Marking
+Completed: 2026-01-21
+Implementation:
+- lib/screens/attendance/attendance_screen.dart - Added OfflineBanner and connectivity checking
+- lib/screens/dashboard/dashboard_screen.dart - Already had OfflineBanner (pre-existing)
+- lib/services/connectivity_service.dart - ConnectivityService with status stream
+- Firestore offline persistence enabled by default
+- "Pending sync" snackbar shown when submitting attendance while offline
+- Auto-sync handled by Firestore SDK when connectivity restored
+
+### US-012: Edit Attendance Within Time Window
+Completed: 2026-01-21
+Implementation:
+- lib/screens/attendance/edit_attendance_screen.dart (NEW) - Full edit UI with:
+  - Remaining time indicator in AppBar
+  - Visual highlighting of changed entries
+  - Status change indicator (From -> To)
+  - Confirmation dialog with change summary
+  - Audit log entries for each change
+- lib/screens/reports/reports_screen.dart - Updated _DailyReportTab:
+  - Added _BatchAttendanceCard showing per-batch summaries
+  - Edit button with remaining time (only within 2-hour window)
+  - "Edit window closed" indicator after expiry
+- lib/providers/attendance_providers.dart - Added:
+  - TodayAttendanceInfo class with batch, summary, canEdit, remainingEditTime
+  - todayAttendanceListProvider for Reports screen
+  - defaultEditWindow const (2 hours)
+- lib/services/firestore_service.dart:
+  - Added getBatches() for one-time fetch
+  - Added updateAttendanceRecord() for metadata updates
+
+---
+
+### US-013: WhatsApp Notification Cloud Function
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- functions/src/index.ts - onAttendanceSubmit Firestore trigger
+- Twilio WhatsApp integration with Business API
+- Template-based messages with institute/batch context
+- Rate limiting (10 msgs/chunk with 500ms delays)
+- Delivery status logging to Firestore
+- Requires Twilio credentials via Secret Manager
+
+### US-014: SMS Fallback Notification Cloud Function
+Completed: 2026-01-21 (pre-existing)
+Implementation:
+- functions/src/index.ts - sendSmsMessage with Twilio SMS API
+- Automatic fallback when WhatsApp fails
+- Shorter formatSmsMessage for character limits
+- Delivery status logging
+
+### US-015: Notification Delivery Confirmation UI
+Completed: 2026-01-21
+Implementation:
+- lib/screens/attendance/notification_status_screen.dart (NEW) - Full delivery status UI:
+  - Summary bar: Pending/Sent/Delivered/Failed counts
+  - Per-student status cards with channel indicator (WhatsApp/SMS)
+  - Retry button for failed notifications (calls retryNotification Cloud Function)
+  - Pull-to-refresh via AppBar refresh button
+- lib/screens/attendance/attendance_screen.dart:
+  - SnackBar with "View Status" action after submission (when online and notifications sent)
+  - Captures attendanceId from submission for navigation
+- lib/screens/reports/reports_screen.dart:
+  - Added "View Status" button to _BatchAttendanceCard
+  - Button appears when there are absent/late students
+- pubspec.yaml: Added cloud_functions: ^5.1.6 for retry functionality
+
+### US-018: View Student Attendance History
+Completed: 2026-01-21
+Implementation:
+- lib/screens/students/student_history_screen.dart (NEW) - Full history UI:
+  - Calendar grid with color-coded days (green=present, red=absent, yellow=late)
+  - Month selector to navigate history
+  - Monthly stats card with attendance percentage
+  - Recent attendance list view (last 10 entries)
+- lib/screens/students/student_list_screen.dart:
+  - Tap on student row navigates to history
+  - View History menu option also available
+- lib/models/attendance.dart:
+  - Added StudentAttendanceHistoryEntry class with dateKey helper
+- lib/services/firestore_service.dart:
+  - Added getStudentAttendanceHistory() method for batch-based history with dates
+- lib/providers/attendance_providers.dart:
+  - Added studentHistoryWithDatesProvider for calendar view
+
+### US-019: Monthly Attendance Summary Report
+Completed: 2026-01-21
+Implementation:
+- lib/screens/reports/reports_screen.dart - Enhanced _MonthlyReportContent:
+  - Per-student attendance breakdown with P/A/L counts
+  - Color-coded attendance percentage (green >=90%, yellow >=75%, red <75%)
+  - Average attendance summary card
+  - PDF export via printing package with full table, summary, and timestamp
+- lib/models/attendance.dart:
+  - Added StudentMonthlyAttendance class
+- lib/services/firestore_service.dart:
+  - Added getMonthlyAttendanceReport() for aggregating student stats
+- lib/providers/attendance_providers.dart:
+  - Added monthlyAttendanceProvider for monthly data
+
+### US-020: Multi-Teacher Support
+Completed: 2026-01-21
+Implementation:
+- lib/screens/settings/teacher_management_screen.dart (NEW) - Full teacher management UI:
+  - Tab 1: Teachers list with admins first, role badges, current user indicator
+  - Tab 2: Pending Invitations with expiry countdown
+  - Invite dialog with 10-digit Indian phone validation
+  - Role selection (Teacher/Admin) with descriptions
+  - PopupMenu: Make Admin, Remove Admin, Remove Teacher
+  - Resend SMS and Cancel invitation actions
+- lib/services/firestore_service.dart:
+  - Added teachersStream() and getTeachers() for teacher list
+  - Added createTeacherInvitation() with duplicate checking
+  - Added pendingInvitationsStream() filtering only valid invitations
+  - Added cancelInvitation(), removeTeacher(), updateTeacherRole()
+- lib/screens/settings/settings_screen.dart:
+  - Wired up "Manage Teachers" to navigate to TeacherManagementScreen
+  - Admin-only sections already restricted via isAdmin check
+- functions/src/index.ts:
+  - onTeacherInvitationCreate Firestore trigger sends SMS with app link
+  - resendTeacherInvitation callable function for resending invitations
+
+### US-021: Audit Log
+Completed: 2026-01-21 (pre-existing UI, verified integration)
+Implementation:
+- lib/screens/settings/settings_screen.dart (_AuditLogScreen):
+  - ListView of logs with icons by action type
+  - Relative timestamp formatting (just now, Xm ago, Xh ago, Xd ago)
+  - Logs user name and action details
+- Audit logging integrated in:
+  - attendance_screen.dart: attendanceSubmit
+  - edit_attendance_screen.dart: attendanceEdit
+  - batch_list_screen.dart: batchCreate
+  - teacher_management_screen.dart: teacherInvite
+  - register_screen.dart: login
+- No delete functionality by design (immutable logs)
+
+### US-022: Edit Institute Profile
+Completed: 2026-01-21
+Implementation:
+- lib/screens/settings/edit_institute_screen.dart (NEW):
+  - Form fields: Institute name, email, phone, address (optional)
+  - Validation: required fields, email format, 10-digit phone
+  - Change tracking with Save button appearing when modified
+  - Audit log entry on save
+  - Info card explaining usage in notifications
+
+### US-023: Configure Notification Templates
+Completed: 2026-01-21
+Implementation:
+- lib/screens/settings/notification_templates_screen.dart (NEW):
+  - Placeholder chips showing available variables ({student}, {batch}, etc.)
+  - Template fields: Present, Absent, Late (WhatsApp), SMS fallback
+  - Preview dialog with sample data replacement
+  - Reset to Defaults button
+  - Character count for SMS template (160 char limit)
+  - Audit log entry on save
+
+### US-024: Set Attendance Edit Window
+Completed: 2026-01-21 (pre-existing UI, fixed provider integration)
+Implementation:
+- lib/screens/settings/settings_screen.dart (_showEditWindowDialog):
+  - Radio buttons: 30 minutes, 1 hour, 2 hours, Same day
+  - Persists to institute.settings.attendanceEditWindowMinutes
+- lib/providers/attendance_providers.dart:
+  - Updated todayAttendanceListProvider to fetch institute settings
+  - Uses institute's configured editWindow instead of hardcoded default
+
+---
+
+## All Stories Complete (24/24)
+
+MVP Features:
+- Authentication: Phone OTP login, institute registration
+- Batch Management: Create, edit, delete batches with schedules
+- Student Management: Add, edit, remove, CSV import
+- Attendance: Mark individual/bulk, submit, edit within window, offline support
+- Notifications: WhatsApp/SMS via Cloud Functions, delivery status UI, retry failed
+- Reports: Daily summary, absent list, student history calendar, monthly PDF export
+- Admin: Multi-teacher with invites, audit log, institute profile edit, notification templates, edit window config
+
+---
+
+## Bug Fixes Applied
+
+### 2026-01-21: Type Safety Fixes
+- Fixed all Firestore data access to use explicit type casting
+- Files: attendance.dart, audit_log.dart, batch.dart, institute.dart, student.dart, teacher.dart, report_providers.dart, student_list_screen.dart
+- Pattern: (data['key'] as Type?) ?? default
+
+### 2026-01-21: Firestore Index Creation
+- Created composite index: attendance (batchId Asc, date Asc)
+- Fixed Reports tab "No Attendance Today" issue
+
+### 2026-01-21: Method Call Fix
+- Fixed batch.dart:87 - Changed ${startTime.format24h} to ${startTime.format24h()}
+
+### 2026-01-21: AuditLog Parameter Fix
+- Fixed teacher_management_screen.dart:606 - Changed `details` to `metadata` in AuditLog constructor
+
+---
+
+## Production Setup Complete
+
+### 2026-01-21: Android Release Configuration
+- android/app/build.gradle: Added release signing config with key.properties
+- android/key.properties.example: Template for release signing credentials
+- android/app/proguard-rules.pro: Added Google Play Core -dontwarn rules for R8
+- android/build.gradle: Updated Kotlin to 2.1.0
+
+### 2026-01-21: Firebase Deployment
+- Firestore security rules deployed (firestore.rules)
+- Firestore indexes deployed (firestore.indexes.json - 11 composite indexes)
+- Cloud Functions verified: build and lint pass
+
+### 2026-01-21: Release Build
+- APK built successfully: build/app/outputs/flutter-apk/app-release.apk (56MB)
+- Flutter analyze: 0 errors, 0 warnings (info-level style suggestions only)
+
+### 2026-01-21: Documentation
+- DEPLOYMENT.md updated with:
+  - Release signing instructions
+  - Secret Manager configuration for Twilio
+  - Firestore deployment commands
+  - Production checklist
+  - Test phone number removal reminder
+
+---
+
+## Deployment Checklist
+
+### Firebase (Completed)
+- [x] Firestore security rules deployed
+- [x] Firestore composite indexes deployed
+- [x] Cloud Functions build verified
+
+### Firebase (Requires Credentials)
+- [ ] Twilio secrets configured in Secret Manager
+- [ ] Cloud Functions deployed to production
+- [ ] Test phone numbers removed
+
+### Android (Ready)
+- [x] Release signing configured in build.gradle
+- [x] Proguard rules configured
+- [x] Release APK builds successfully
+
+### Android (Requires Action)
+- [ ] Create upload keystore (keytool command)
+- [ ] Configure key.properties with credentials
+- [ ] Build and upload App Bundle to Play Store
+
+### Play Store
+- [ ] Create app listing
+- [ ] Add privacy policy
+- [ ] Complete content rating
+- [ ] Upload App Bundle
+- [ ] Submit for review
+
+---
+
+## iOS App Store Setup
+
+### 2026-01-21: iOS Configuration
+- ios/Runner/Info.plist: Added permissions (photo library, camera, encryption flag)
+- ios/ExportOptions.plist: Created for App Store distribution
+- ios/Podfile: Updated with Firebase version pinning
+- Bundle ID: com.missedClassNotifier
+
+### iOS Requirements
+- **Xcode 16+** required for Swift 6 (Firebase SDK 11.15+)
+- Apple Developer Account ($99/year)
+- GoogleService-Info.plist from Firebase Console
+
+### iOS Checklist
+- [x] Info.plist permissions configured
+- [x] ExportOptions.plist created
+- [x] Podfile updated for Firebase
+- [ ] GoogleService-Info.plist added
+- [ ] Xcode 16 installed
+- [ ] Apple Developer account enrolled
+- [ ] Code signing configured
+- [ ] Build and archive
+- [ ] Upload to App Store Connect

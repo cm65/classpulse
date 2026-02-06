@@ -1,0 +1,227 @@
+{
+  "project": "TutorNotification-TestingFixes",
+  "branchName": "ralph/app-testing-fixes",
+  "description": "Testing and bug fixes for TutorNotification Flutter app - Firestore index creation and closure bug fix",
+  "executionConfig": {
+    "batchingEnabled": true,
+    "batchingStrategy": "context-aware",
+    "notes": "All stories completed. This PRD documents fixes applied during comprehensive testing."
+  },
+  "storyBatches": [
+    {
+      "batchId": "B1-bug-fixes",
+      "name": "Bug Fixes",
+      "stories": ["TF-001"],
+      "description": "Code bug fixes discovered during testing"
+    },
+    {
+      "batchId": "B2-firestore-indexes",
+      "name": "Firestore Index Configuration",
+      "stories": ["TF-002", "TF-003"],
+      "description": "Create required Firestore composite indexes"
+    },
+    {
+      "batchId": "B3-verification",
+      "name": "Feature Verification",
+      "stories": ["TF-004", "TF-005", "TF-006"],
+      "description": "Verify core features work correctly after fixes"
+    },
+    {
+      "batchId": "B4-type-safety",
+      "name": "Type Safety Fixes",
+      "stories": ["TF-007"],
+      "description": "Fix Dart type safety errors in Firestore data access"
+    }
+  ],
+  "userStories": [
+    {
+      "id": "TF-001",
+      "title": "Fix Batch Schedule Time Display Bug",
+      "description": "As a teacher, I want to see the correct batch schedule time format so I can quickly identify when classes occur.",
+      "acceptanceCriteria": [
+        "Batch cards display time in 'HH:MM - HH:MM' format (e.g., '09:00 - 10:00')",
+        "No Dart closure references displayed (e.g., 'Closure: () => String...')",
+        "Time format consistent across Home, Batches, and Attendance screens",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Fix applied: lib/models/batch.dart:87 - Changed ${startTime.format24h} to ${startTime.format24h()}. Root cause: Method reference instead of method call."
+    },
+    {
+      "id": "TF-002",
+      "title": "Create Students Collection Composite Index",
+      "description": "As a developer, I need the correct Firestore index for querying students so the students list loads without errors.",
+      "acceptanceCriteria": [
+        "Create composite index: students collection with isActive (Asc), name (Asc)",
+        "Index status shows 'Enabled' in Firebase Console",
+        "Students list loads without 'failed-precondition' error",
+        "Students can be added to batches successfully"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Created index via Firebase Console. Previous incorrect index: batchId, name (batchId is path, not query field). Correct index: isActive, name (matches actual query filters)."
+    },
+    {
+      "id": "TF-003",
+      "title": "Create Attendance Date Range Index",
+      "description": "As a developer, I need the correct Firestore index for querying attendance by date so the Reports tab shows today's attendance.",
+      "acceptanceCriteria": [
+        "Create composite index: attendance collection with batchId (Asc), date (Asc)",
+        "Reports 'Today' tab shows attendance records for current day",
+        "Today's Summary on Home screen shows correct counts",
+        "No 'failed-precondition' errors on Reports screen"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Created index via Firebase Console: attendance -> batchId (Asc), date (Asc). Query requires composite index because it combines batchId equality with date range filters."
+    },
+    {
+      "id": "TF-004",
+      "title": "Verify Add Student Flow",
+      "description": "As a teacher, I want to add students to a batch so I can mark their attendance.",
+      "acceptanceCriteria": [
+        "Add Student dialog opens from batch details",
+        "Form accepts student name and parent phone (10 digits)",
+        "Student appears in list after adding",
+        "Student data saved to Firestore correctly",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Verified working on Android emulator. Added TestStudent1 with +919876543210."
+    },
+    {
+      "id": "TF-005",
+      "title": "Verify Mark Attendance Flow",
+      "description": "As a teacher, I want to mark attendance for students so parents are notified.",
+      "acceptanceCriteria": [
+        "Attendance screen shows all students in batch",
+        "Tapping student cycles status: Unmarked -> Present -> Absent -> Late",
+        "Status counters update in real-time",
+        "Confirmation dialog shows attendance summary before submit",
+        "Attendance record created in Firestore after submit",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Verified working on Android emulator. Attendance record created in Firestore with batchId, date, submittedAt, submittedBy."
+    },
+    {
+      "id": "TF-006",
+      "title": "Verify Reports Display",
+      "description": "As a teacher, I want to view attendance reports so I can track patterns.",
+      "acceptanceCriteria": [
+        "Reports tab has three sub-tabs: Today, Absent, Monthly",
+        "Today tab shows attendance summary when data exists (1 Present, 0 Absent, 0 Late)",
+        "Absent tab lists students marked absent today",
+        "No errors when viewing Reports",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Verified working after attendance index creation. Shows: Wednesday, January 21, 2026 - 1 Present, 0 Absent, 0 Late, 1 batches with attendance marked."
+    },
+    {
+      "id": "TF-007",
+      "title": "Fix Dart Type Safety Errors",
+      "description": "As a developer, I need all Firestore data access to use proper type casting so the app compiles without errors and handles null/missing data gracefully.",
+      "acceptanceCriteria": [
+        "All fromFirestore factory methods use explicit type casting",
+        "Pattern: (data['key'] as Type?) ?? defaultValue for required fields",
+        "Pattern: data['key'] as Type? for optional fields",
+        "flutter analyze passes with 0 errors",
+        "App builds and runs correctly on emulator"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Fixed type casting in 9 files. Root cause: Firestore returns Map<String, dynamic> where values are dynamic type. The ?? operator with dynamic still returns dynamic, causing type mismatches. Solution: Explicit cast before null-coalescing."
+    }
+  ],
+  "firestoreIndexes": [
+    {
+      "collection": "batches",
+      "fields": ["isActive (Asc)", "name (Asc)"],
+      "scope": "Collection",
+      "status": "Enabled"
+    },
+    {
+      "collection": "students",
+      "fields": ["isActive (Asc)", "name (Asc)"],
+      "scope": "Collection",
+      "status": "Enabled"
+    },
+    {
+      "collection": "students",
+      "fields": ["batchId (Asc)", "name (Asc)"],
+      "scope": "Collection",
+      "status": "Enabled"
+    },
+    {
+      "collection": "teacherInvitations",
+      "fields": ["isAccepted (Asc)", "phone (Asc)", "invitedAt (Desc)"],
+      "scope": "Collection",
+      "status": "Enabled"
+    },
+    {
+      "collection": "attendance",
+      "fields": ["batchId (Asc)", "date (Asc)"],
+      "scope": "Collection",
+      "status": "Enabled"
+    }
+  ],
+  "filesModified": [
+    {
+      "file": "lib/models/batch.dart",
+      "line": 87,
+      "change": "Fixed method call syntax: ${startTime.format24h} -> ${startTime.format24h()}"
+    },
+    {
+      "file": "lib/models/attendance.dart",
+      "lines": "127-139, 195-207",
+      "change": "Type casting in AttendanceRecord.fromFirestore and StudentAttendance.fromFirestore"
+    },
+    {
+      "file": "lib/models/audit_log.dart",
+      "lines": "111-123",
+      "change": "Type casting in AuditLog.fromFirestore"
+    },
+    {
+      "file": "lib/models/batch.dart",
+      "lines": "28-41, 98-102",
+      "change": "Type casting in Batch.fromFirestore and ScheduleTime.fromMap"
+    },
+    {
+      "file": "lib/models/institute.dart",
+      "lines": "28-41, 96-101, 126-132",
+      "change": "Type casting in Institute.fromFirestore, InstituteSettings.fromMap, NotificationTemplates.fromMap"
+    },
+    {
+      "file": "lib/models/student.dart",
+      "lines": "24-36",
+      "change": "Type casting in Student.fromFirestore"
+    },
+    {
+      "file": "lib/models/teacher.dart",
+      "lines": "50-61, 135-147",
+      "change": "Type casting in Teacher.fromFirestore and TeacherInvitation.fromFirestore"
+    },
+    {
+      "file": "lib/providers/report_providers.dart",
+      "lines": "63-72",
+      "change": "Type casting in NotificationStatusEntry stream map"
+    },
+    {
+      "file": "lib/screens/students/student_list_screen.dart",
+      "lines": "510-518, 576-582",
+      "change": "Type casting for CSV import data"
+    },
+    {
+      "file": "test/widget_test.dart",
+      "lines": "1-14",
+      "change": "Replaced default counter test with minimal smoke test"
+    }
+  ],
+  "completionDate": "2026-01-21",
+  "summary": "All 7 stories completed successfully. App tested on Android emulator with all core features working: authentication, batch management, student management, attendance marking, and reports display. Type safety fixes applied to all Firestore model classes ensuring flutter analyze passes with 0 errors."
+}

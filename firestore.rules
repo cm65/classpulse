@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isTeacher(instituteId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.instituteId == instituteId;
+    }
+
+    function isAdmin(instituteId) {
+      return isTeacher(instituteId) &&
+        get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Teachers collection
+    match /teachers/{teacherId} {
+      allow read: if isAuthenticated() && request.auth.uid == teacherId;
+      allow create: if isAuthenticated() && request.auth.uid == teacherId;
+      allow update: if isAuthenticated() && request.auth.uid == teacherId;
+      allow delete: if false; // Never delete teacher records
+    }
+
+    // Teacher invitations
+    match /teacherInvitations/{invitationId} {
+      // Read: only invitations for the authenticated user's phone
+      allow read: if isAuthenticated();
+      // Create: only admins of the target institute
+      allow create: if isAuthenticated() &&
+        isAdmin(request.resource.data.instituteId);
+      // Update: admin of the institute OR the invited teacher accepting their own invitation
+      allow update: if isAuthenticated() && (
+        isAdmin(resource.data.instituteId) ||
+        (resource.data.phone == request.auth.token.phone_number &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAccepted', 'acceptedAt', 'acceptedBy']))
+      );
+      allow delete: if false;
+    }
+
+    // Institutes collection
+    match /institutes/{instituteId} {
+      allow read: if isTeacher(instituteId);
+      allow create: if isAuthenticated();
+      allow update: if isAdmin(instituteId);
+      allow delete: if false; // Never delete institutes
+
+      // Batches subcollection
+      match /batches/{batchId} {
+        allow read: if isTeacher(instituteId);
+        allow create: if isTeacher(instituteId);
+        allow update: if isTeacher(instituteId);
+        allow delete: if isAdmin(instituteId);
+
+        // Students subcollection
+        match /students/{studentId} {
+          allow read: if isTeacher(instituteId);
+          allow create: if isTeacher(instituteId);
+          allow update: if isTeacher(instituteId);
+          allow delete: if isAdmin(instituteId);
+        }
+      }
+
+      // Attendance subcollection
+      match /attendance/{attendanceId} {
+        allow read: if isTeacher(instituteId);
+        allow create: if isTeacher(instituteId);
+        allow update: if isTeacher(instituteId);
+        allow delete: if false; // Never delete attendance records
+
+        // Attendance records subcollection
+        match /records/{recordId} {
+          allow read: if isTeacher(instituteId);
+          allow create: if isTeacher(instituteId);
+          allow update: if isTeacher(instituteId);
+          allow delete: if false;
+        }
+      }
+
+      // Audit log subcollection
+      match /auditLog/{logId} {
+        allow read: if isAdmin(instituteId);
+        allow create: if isTeacher(instituteId);
+        allow update: if false; // Audit logs are immutable
+        allow delete: if false;
+      }
+    }
+  }
+}

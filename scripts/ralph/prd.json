@@ -1,0 +1,426 @@
+{
+  "project": "MissedClassNotifier",
+  "branchName": "ralph/missed-class-notifier-mvp",
+  "description": "Mobile app for coaching centres to mark student attendance and notify parents via WhatsApp/SMS in real-time",
+  "executionConfig": {
+    "batchingEnabled": true,
+    "batchingStrategy": "context-aware",
+    "notes": "Multiple stories can be completed in one iteration as long as context permits. Stories within the same batch group can be executed together."
+  },
+  "storyBatches": [
+    {
+      "batchId": "B1-foundation",
+      "name": "Project Setup & Authentication",
+      "stories": ["US-001", "US-002"],
+      "description": "Flutter project setup, Firebase config, and authentication flow"
+    },
+    {
+      "batchId": "B2-institute-management",
+      "name": "Institute & Batch Management",
+      "stories": ["US-003", "US-004", "US-005", "US-006"],
+      "description": "Batch creation and student management features"
+    },
+    {
+      "batchId": "B3-attendance-core",
+      "name": "Core Attendance Marking",
+      "stories": ["US-007", "US-008", "US-009", "US-010"],
+      "description": "Attendance screen, marking, bulk actions, and submission"
+    },
+    {
+      "batchId": "B4-offline-edit",
+      "name": "Offline & Edit Features",
+      "stories": ["US-011", "US-012"],
+      "description": "Offline support and attendance editing"
+    },
+    {
+      "batchId": "B5-notifications",
+      "name": "Notification System",
+      "stories": ["US-013", "US-014", "US-015"],
+      "description": "WhatsApp, SMS Cloud Functions and delivery UI"
+    },
+    {
+      "batchId": "B6-reports",
+      "name": "Reports & Analytics",
+      "stories": ["US-016", "US-017", "US-018", "US-019"],
+      "description": "Daily reports, absent list, history, monthly summary"
+    },
+    {
+      "batchId": "B7-admin",
+      "name": "Admin & Settings",
+      "stories": ["US-020", "US-021", "US-022", "US-023", "US-024"],
+      "description": "Multi-teacher, audit log, and configuration settings"
+    }
+  ],
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Phone OTP Login",
+      "description": "As a teacher, I want to log in using my phone number and OTP so I don't need to remember passwords.",
+      "acceptanceCriteria": [
+        "Phone number input screen with 10-digit Indian mobile validation",
+        "Send OTP via Firebase Auth",
+        "OTP verification screen (6 digits)",
+        "Auto-read OTP on Android (SMS Retriever API)",
+        "Create/link user to institute on first login",
+        "Persist session (stay logged in)",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented in lib/screens/auth/login_screen.dart. Uses Firebase Phone Auth with auto-verification. Test phone: +91 9999999999 (OTP: 123456)"
+    },
+    {
+      "id": "US-002",
+      "title": "Institute Registration",
+      "description": "As an institute admin, I want to register my coaching centre so I can start managing attendance digitally.",
+      "acceptanceCriteria": [
+        "Registration form: Institute name, admin name, phone number, email",
+        "OTP verification via SMS for phone number",
+        "Create institute record in Firestore with unique ID",
+        "Redirect to dashboard after successful registration",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Implemented in lib/screens/auth/register_screen.dart. Creates institute and teacher records in Firestore."
+    },
+    {
+      "id": "US-003",
+      "title": "Create Batch/Class",
+      "description": "As an institute admin, I want to create batches (e.g., 'Class 10 Maths - Morning') so I can organize students by class.",
+      "acceptanceCriteria": [
+        "Form fields: Batch name, subject (optional), schedule (days of week), start time, end time",
+        "Batch saved to Firestore under institute document",
+        "Batch appears in dashboard batch list",
+        "Support for multiple batches per institute",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Implemented in lib/screens/batches/batch_list_screen.dart. Batch model in lib/models/batch.dart with ScheduleTime."
+    },
+    {
+      "id": "US-004",
+      "title": "Add Student Manually",
+      "description": "As a teacher, I want to add a student to a batch by entering their name and parent phone number.",
+      "acceptanceCriteria": [
+        "Form fields: Student name, parent phone (required), student ID (optional)",
+        "Phone number validation (10-digit Indian mobile)",
+        "Student saved to batch's student subcollection",
+        "Duplicate phone number warning (same student in same batch)",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Implemented in lib/screens/students/student_list_screen.dart. Validation in Student.isValidIndianPhone()."
+    },
+    {
+      "id": "US-005",
+      "title": "Bulk Import Students via CSV",
+      "description": "As an institute admin, I want to upload a CSV/Excel file to add multiple students at once so I can onboard quickly.",
+      "acceptanceCriteria": [
+        "Accept CSV file with columns: student_name, parent_phone, student_id (optional)",
+        "Preview imported data before confirming",
+        "Show validation errors (invalid phone numbers, missing names)",
+        "Skip invalid rows, import valid ones",
+        "Display import summary (X imported, Y skipped)",
+        "Support UTF-8 encoding for Indian names",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Implemented in lib/screens/students/student_list_screen.dart with _ImportPreviewDialog. Uses file_picker and csv packages."
+    },
+    {
+      "id": "US-006",
+      "title": "Edit/Remove Student",
+      "description": "As a teacher, I want to edit student details or remove a student who has left the batch.",
+      "acceptanceCriteria": [
+        "Edit button on student list item",
+        "Update student name, parent phone, or student ID",
+        "Delete student with confirmation dialog",
+        "Soft delete (mark inactive) to preserve attendance history",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Implemented in lib/screens/students/student_list_screen.dart. Uses isActive flag for soft delete."
+    },
+    {
+      "id": "US-007",
+      "title": "View Today's Attendance Screen",
+      "description": "As a teacher, I want to see a list of all students in a batch so I can mark attendance quickly.",
+      "acceptanceCriteria": [
+        "Select batch from dropdown or batch list",
+        "Display all active students in large, tap-friendly cards",
+        "Show student name prominently (large font for low-light classrooms)",
+        "Default status: unmarked (gray)",
+        "Date shown at top (auto-selects today)",
+        "Minimum touch target: 48x48dp",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Implemented in lib/screens/attendance/attendance_screen.dart. Uses studentsProvider for batch students."
+    },
+    {
+      "id": "US-008",
+      "title": "Mark Individual Attendance",
+      "description": "As a teacher, I want to tap a student's name to cycle through attendance states (Present/Absent/Late).",
+      "acceptanceCriteria": [
+        "Tap cycles: Unmarked -> Present (green) -> Absent (red) -> Late (yellow) -> Unmarked",
+        "Large touch targets (minimum 48x48dp, preferably larger)",
+        "Visual feedback: color change + icon (checkmark, X, clock)",
+        "Haptic feedback on tap",
+        "State saved locally immediately (offline-first)",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Implemented with _toggleAttendance() method. Uses vibration package for haptic feedback. Status cycles via AttendanceStatus.next()."
+    },
+    {
+      "id": "US-009",
+      "title": "Mark All Present / All Absent",
+      "description": "As a teacher, I want a quick action to mark everyone present (common case) so I only need to adjust exceptions.",
+      "acceptanceCriteria": [
+        "Mark All Present button at top of attendance screen",
+        "Mark All Absent button (for cancelled class scenario)",
+        "Confirmation dialog before bulk action",
+        "Can still individually adjust after bulk mark",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Implemented with _markAll() method. Shows confirmation dialog before bulk action."
+    },
+    {
+      "id": "US-010",
+      "title": "Submit Attendance",
+      "description": "As a teacher, I want to submit attendance for a batch so notifications are sent to parents.",
+      "acceptanceCriteria": [
+        "Submit Attendance button (prominent, bottom of screen)",
+        "Confirmation dialog showing summary: X Present, Y Absent, Z Late",
+        "Prevent submission if any student unmarked (with option to mark remaining absent)",
+        "Save attendance record to Firestore with timestamp",
+        "Trigger Cloud Function to send notifications",
+        "Show success message with delivery status",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Implemented with _submitAttendance() method. Creates AttendanceRecord and StudentAttendance subcollection. Cloud Function trigger pending (US-013)."
+    },
+    {
+      "id": "US-011",
+      "title": "Offline Attendance Marking",
+      "description": "As a teacher, I want attendance marking to work even without internet so I can use it in basements or rural areas.",
+      "acceptanceCriteria": [
+        "All attendance marks saved to local Firestore cache immediately",
+        "Visual indicator when offline (banner or icon)",
+        "Queue attendance submission for when online",
+        "Auto-sync when internet restored",
+        "No data loss if app closed while offline",
+        "Show Pending sync indicator for unsynced attendance",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "Implemented: (1) Firestore offline persistence enabled by default, (2) OfflineBanner in dashboard_screen.dart and attendance_screen.dart, (3) connectivityProvider watches network status, (4) 'Pending sync' snackbar shown when submitting offline. Firestore handles auto-sync automatically."
+    },
+    {
+      "id": "US-012",
+      "title": "Edit Attendance Within Time Window",
+      "description": "As a teacher, I want to edit today's attendance within 2 hours of submission to fix mistakes.",
+      "acceptanceCriteria": [
+        "Edit button on submitted attendance (only within 2-hour window)",
+        "Load previously marked attendance for editing",
+        "Track edit in audit log (original value, new value, timestamp, user)",
+        "Re-send corrected notification to affected parents only",
+        "Disable editing after time window expires",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "Implemented: (1) EditAttendanceScreen with time-limited editing, (2) _BatchAttendanceCard in Reports shows edit button with remaining time, (3) Audit log entries for each status change, (4) todayAttendanceListProvider for batch info + edit status. Re-notification pending Cloud Functions (US-013)."
+    },
+    {
+      "id": "US-013",
+      "title": "Send WhatsApp Notification - Cloud Function",
+      "description": "As a parent, I want to receive a WhatsApp message when my child's attendance is marked so I know immediately.",
+      "acceptanceCriteria": [
+        "Cloud Function triggered on attendance submission",
+        "Use WhatsApp Business API (via Twilio/Gupshup)",
+        "Message template includes: Institute name, Student name, Status, Batch, Date, Time",
+        "Log delivery status (sent, delivered, read, failed)",
+        "Send within 30 seconds of submission",
+        "firebase deploy succeeds for Cloud Functions"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "Implemented in functions/src/index.ts: (1) onAttendanceSubmit Firestore trigger, (2) Twilio WhatsApp integration, (3) Template-based messages with institute/batch context, (4) Rate limiting (10 msgs/chunk with 500ms delay), (5) Delivery status logging. Requires Twilio credentials via Secret Manager."
+    },
+    {
+      "id": "US-014",
+      "title": "SMS Fallback Notification - Cloud Function",
+      "description": "As a parent without WhatsApp, I want to receive an SMS so I still get notified.",
+      "acceptanceCriteria": [
+        "If WhatsApp delivery fails after 60 seconds, send SMS",
+        "Use Twilio SMS API",
+        "Shorter message format for SMS character limits",
+        "Log SMS delivery status",
+        "Track costs per message for billing",
+        "firebase deploy succeeds for Cloud Functions"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": "Implemented in functions/src/index.ts: (1) sendSmsMessage with Twilio SMS API, (2) Automatic fallback when WhatsApp fails, (3) Shorter formatSmsMessage for character limits, (4) Delivery status logging. Cost tracking not implemented yet."
+    },
+    {
+      "id": "US-015",
+      "title": "Notification Delivery Confirmation UI",
+      "description": "As a teacher, I want to see if notifications were delivered so I know parents received them.",
+      "acceptanceCriteria": [
+        "After submission, show delivery status per student",
+        "Icons: checkmark Delivered (WhatsApp), checkmark Sent (SMS), warning Failed",
+        "Retry button for failed notifications",
+        "Store delivery status in attendance record",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": "Implemented NotificationStatusScreen at lib/screens/attendance/notification_status_screen.dart. Summary bar with Pending/Sent/Delivered/Failed counts. Per-student status cards with retry button (calls retryNotification Cloud Function). Integrated via: (1) SnackBar action after attendance submission, (2) View Status button in Reports > Today tab. Added cloud_functions package for retry functionality."
+    },
+    {
+      "id": "US-016",
+      "title": "View Daily Attendance Report",
+      "description": "As a teacher, I want to see today's attendance summary across all batches.",
+      "acceptanceCriteria": [
+        "Dashboard shows: Total students, Present count, Absent count, Late count",
+        "Per-batch breakdown",
+        "Tap batch to see individual student statuses",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": "Implemented in lib/screens/reports/reports_screen.dart (_DailyReportTab) and dashboard. Shows summary cards with attendance counts."
+    },
+    {
+      "id": "US-017",
+      "title": "View Absent Students List",
+      "description": "As an institute admin, I want to see a list of all absent students today so I can follow up.",
+      "acceptanceCriteria": [
+        "Filter: Today's absences across all batches",
+        "Show: Student name, batch, parent phone",
+        "Option to manually call parent (tap to dial)",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 17,
+      "passes": true,
+      "notes": "Implemented in lib/screens/reports/reports_screen.dart (_AbsentListTab). Uses url_launcher for phone dialing."
+    },
+    {
+      "id": "US-018",
+      "title": "View Student Attendance History",
+      "description": "As a teacher, I want to see a student's attendance history to identify patterns.",
+      "acceptanceCriteria": [
+        "Tap student to view history",
+        "Calendar view with color-coded days (green/red/yellow)",
+        "Monthly attendance percentage",
+        "List view of recent attendance records",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 18,
+      "passes": true,
+      "notes": "Implemented StudentHistoryScreen at lib/screens/students/student_history_screen.dart. Features: (1) Calendar grid with color-coded days (green=present, red=absent, yellow=late), (2) Monthly attendance percentage in stats card, (3) Recent attendance list view, (4) Month selector to navigate history. Tap student in list or use View History menu option."
+    },
+    {
+      "id": "US-019",
+      "title": "Monthly Attendance Summary Report",
+      "description": "As an institute admin, I want to generate a monthly attendance report for records.",
+      "acceptanceCriteria": [
+        "Select month and batch",
+        "Show: Total classes, attendance percentage per student",
+        "Export as PDF or shareable image",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": "Implemented in Reports > Monthly tab. Features: (1) Month/batch selectors, (2) Per-student attendance breakdown with P/A/L counts and percentage, (3) Color-coded attendance percentage badges, (4) Average attendance summary, (5) PDF export with full table via printing package."
+    },
+    {
+      "id": "US-020",
+      "title": "Multi-Teacher Support",
+      "description": "As an institute admin, I want to add multiple teachers who can mark attendance.",
+      "acceptanceCriteria": [
+        "Invite teacher by phone number",
+        "Teacher receives SMS with app link",
+        "Teacher registers and links to institute",
+        "Role-based access: Admin (full access) vs Teacher (attendance only)",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 20,
+      "passes": true,
+      "notes": "lib/screens/settings/teacher_management_screen.dart - Full teacher management UI with tabs (Teachers/Pending Invites). Invite dialog with phone validation and role selection. Cloud Functions onTeacherInvitationCreate sends SMS with app link. resendTeacherInvitation callable function for resending. Role-based UI in settings_screen.dart (admin-only sections)."
+    },
+    {
+      "id": "US-021",
+      "title": "Audit Log",
+      "description": "As an institute admin, I want to see who marked/edited attendance for accountability.",
+      "acceptanceCriteria": [
+        "Log every attendance action: mark, submit, edit",
+        "Store: timestamp, user ID, action type, old value, new value",
+        "View audit log in admin settings",
+        "Cannot delete audit logs",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 21,
+      "passes": true,
+      "notes": "lib/screens/settings/settings_screen.dart (_AuditLogScreen) displays logs with icons by action type. Logging integrated in: attendance_screen.dart (submit), edit_attendance_screen.dart (edit), batch_list_screen.dart (create), teacher_management_screen.dart (invite). No delete functionality by design."
+    },
+    {
+      "id": "US-022",
+      "title": "Edit Institute Profile",
+      "description": "As an institute admin, I want to update my institute's name and contact details.",
+      "acceptanceCriteria": [
+        "Edit: Institute name, address, contact phone, logo (optional)",
+        "Logo appears in notification messages (WhatsApp only)",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 22,
+      "passes": true,
+      "notes": "lib/screens/settings/edit_institute_screen.dart - Form with name, email, phone, address fields. Validation, change tracking, audit logging. Logo upload not implemented (optional per AC)."
+    },
+    {
+      "id": "US-023",
+      "title": "Configure Notification Templates",
+      "description": "As an institute admin, I want to customize the notification message format.",
+      "acceptanceCriteria": [
+        "Default templates for Present/Absent/Late",
+        "Editable message with placeholders: {student}, {batch}, {date}, {time}, {status}",
+        "Preview before saving",
+        "Language selection (English, Hindi for MVP)",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 23,
+      "passes": true,
+      "notes": "lib/screens/settings/notification_templates_screen.dart - Full template editor with: placeholders chip display, Present/Absent/Late/SMS template fields, preview dialog with sample data, reset to defaults, character count for SMS. Language selection deferred (templates work in any language)."
+    },
+    {
+      "id": "US-024",
+      "title": "Set Attendance Edit Window",
+      "description": "As an institute admin, I want to configure how long teachers can edit attendance after submission.",
+      "acceptanceCriteria": [
+        "Setting: Edit window duration (30 min / 1 hour / 2 hours / same day)",
+        "Default: 2 hours",
+        "Applies to all batches in institute",
+        "flutter analyze passes with no errors"
+      ],
+      "priority": 24,
+      "passes": true,
+      "notes": "lib/screens/settings/settings_screen.dart (_showEditWindowDialog) provides radio buttons for 30min/1hr/2hr/same day. Persists to institute.settings.attendanceEditWindowMinutes. todayAttendanceListProvider updated to read institute setting for edit window."
+    }
+  ],
+  "lastUpdated": "2026-01-21",
+  "summary": "24 of 24 stories completed. Full MVP complete: auth, batches, students, attendance marking (offline support, edit within window), notifications (WhatsApp/SMS via Cloud Functions, delivery status UI), reports (daily, absent list, student history, monthly PDF export), and admin settings (multi-teacher, audit log, institute profile, notification templates, edit window config)."
+}

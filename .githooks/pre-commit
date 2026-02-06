@@ -1,0 +1,13 @@
+#!/bin/sh
+# Pre-commit hook: run flutter analyze to catch errors before commit
+
+echo "Running flutter analyze..."
+flutter analyze --no-fatal-infos --no-fatal-warnings
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "flutter analyze found errors. Please fix them before committing."
+  exit 1
+fi
+
+echo "Analysis passed."
